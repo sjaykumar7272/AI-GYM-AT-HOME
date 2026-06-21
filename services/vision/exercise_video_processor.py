@@ -194,10 +194,13 @@ class VideoProcessorClass(VideoProcessorBase):
             dtype=np.uint8
         )
 
+
         mp_image = mp.Image(
-            image_format=mp.ImageFormat.SRGB,
-            data=cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+        image_format=mp.ImageFormat.SRGB,
+         data=cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         )
+
+        
 
         self._frame_timestamps_ms += 30
         result = self._landmarker.detect_for_video(mp_image, self._frame_timestamps_ms)
