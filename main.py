@@ -18,6 +18,54 @@ from services.coaching.tts import TextToSpeech
 from services.coaching.voice_pipeline import VoicePipeline, autoplay_audio
 
 
+def get_ice_servers():
+    """
+    STUN alone is not enough once the app is deployed (Streamlit Cloud server
+    and the visitor's browser are on different networks/NATs). We add a TURN
+    relay so the connection can fall back to relaying media when a direct
+    peer-to-peer path can't be established.
+
+    Get free TURN credentials from https://www.metered.ca/tools/openrelay/
+    and put them in .streamlit/secrets.toml (locally) and in your
+    Streamlit Cloud app's "Secrets" settings (when deployed):
+
+        TURN_USERNAME = "xxxx"
+        TURN_CREDENTIAL = "xxxx"
+    """
+    ice_servers = [{"urls": ["stun:stun.l.google.com:19302"]}]
+
+    turn_username = None
+    turn_credential = None
+
+    if hasattr(st, "secrets"):
+        turn_username = st.secrets.get("TURN_USERNAME")
+        turn_credential = st.secrets.get("TURN_CREDENTIAL")
+
+    turn_username = turn_username or os.getenv("TURN_USERNAME")
+    turn_credential = turn_credential or os.getenv("TURN_CREDENTIAL")
+
+    if turn_username and turn_credential:
+        ice_servers += [
+            {
+                "urls": ["turn:global.relay.metered.ca:80"],
+                "username": turn_username,
+                "credential": turn_credential,
+            },
+            {
+                "urls": ["turn:global.relay.metered.ca:443"],
+                "username": turn_username,
+                "credential": turn_credential,
+            },
+            {
+                "urls": ["turns:global.relay.metered.ca:443?transport=tcp"],
+                "username": turn_username,
+                "credential": turn_credential,
+            },
+        ]
+
+    return ice_servers
+
+
 def main():
     st.set_page_config(
         page_icon="🏋️‍♀️",
@@ -204,7 +252,7 @@ def main():
             key="exercise-analysis",
             mode=WebRtcMode.SENDRECV,
             video_processor_factory=VideoProcessorClass,
-            rtc_configuration={"iceServers": [{"urls": ["stun:stun.l.google.com:19302"]}]},
+            rtc_configuration={"iceServers": get_ice_servers()},
             media_stream_constraints={
                 "video": True,
                 "audio": False
